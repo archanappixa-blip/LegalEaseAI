@@ -1,4 +1,5 @@
 from io import BytesIO
+import os
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -8,9 +9,17 @@ from fpdf import FPDF
 from backend.utils.text import sanitize_text
 
 
+# ============================================================
+# TXT EXPORT
+# ============================================================
+
 def make_txt(text: str) -> bytes:
     return sanitize_text(text).encode("utf-8")
 
+
+# ============================================================
+# DOCX EXPORT
+# ============================================================
 
 def make_docx(
     text: str,
@@ -31,6 +40,7 @@ def make_docx(
     styles["Normal"].font.name = "Arial"
     styles["Normal"].font.size = Pt(10.5)
 
+    # Header
     header = section.header
     p = header.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -39,6 +49,7 @@ def make_docx(
     r.bold = True
     r.font.size = Pt(14)
 
+    # Title
     title = document.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
@@ -51,6 +62,7 @@ def make_docx(
     cleaned = sanitize_text(text)
 
     for block in cleaned.split("\n\n"):
+
         block = block.strip()
 
         if not block:
@@ -59,6 +71,7 @@ def make_docx(
         paragraph = document.add_paragraph()
 
         for index, line in enumerate(block.splitlines()):
+
             line = line.strip()
 
             if not line:
@@ -72,6 +85,7 @@ def make_docx(
             if line.isupper():
                 r.bold = True
 
+    # Footer
     footer = section.footer
     p = footer.paragraphs[0]
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -87,28 +101,74 @@ def make_docx(
     return output.getvalue()
 
 
+# ============================================================
+# PDF CLASS
+# ============================================================
+
 class LegalPDF(FPDF):
 
     def __init__(
         self,
         brand_name="LegalEase",
         document_type="Legal Document",
+        logo_path=None,
     ):
         super().__init__()
 
         self.brand_name = brand_name
         self.document_type = document_type
+        self.logo_path = logo_path
 
-        self.set_margins(18, 20, 18)
+        # Margins
+        # Top margin is larger because logo is displayed there
+        self.set_margins(
+            18,
+            32,
+            18
+        )
 
+        # Space for footer
         self.set_auto_page_break(
             auto=True,
             margin=20
         )
 
+    # --------------------------------------------------------
+    # PDF HEADER
+    # --------------------------------------------------------
+
     def header(self):
 
-        self.set_font("Helvetica", "B", 13)
+        # Display logo at top center
+        if self.logo_path and os.path.exists(self.logo_path):
+
+            logo_width = 35
+
+            x_position = (
+                self.w - logo_width
+            ) / 2
+
+            self.image(
+                self.logo_path,
+                x=x_position,
+                y=8,
+                w=logo_width
+            )
+
+            # Move cursor below logo
+            self.set_y(28)
+
+        else:
+
+            # If logo is not found
+            self.set_y(10)
+
+        # Brand name
+        self.set_font(
+            "Helvetica",
+            "B",
+            13
+        )
 
         self.cell(
             0,
@@ -117,9 +177,14 @@ class LegalPDF(FPDF):
             align="C"
         )
 
-        self.ln(10)
+        self.ln(8)
 
-        self.set_font("Helvetica", "B", 14)
+        # Document title
+        self.set_font(
+            "Helvetica",
+            "B",
+            14
+        )
 
         self.multi_cell(
             0,
@@ -130,11 +195,19 @@ class LegalPDF(FPDF):
 
         self.ln(6)
 
+    # --------------------------------------------------------
+    # PDF FOOTER
+    # --------------------------------------------------------
+
     def footer(self):
 
         self.set_y(-15)
 
-        self.set_font("Helvetica", "", 8)
+        self.set_font(
+            "Helvetica",
+            "",
+            8
+        )
 
         self.cell(
             0,
@@ -143,6 +216,10 @@ class LegalPDF(FPDF):
             align="C"
         )
 
+
+# ============================================================
+# SAFE PDF TEXT
+# ============================================================
 
 def safe_pdf_text(text: str) -> str:
 
@@ -172,6 +249,10 @@ def safe_pdf_text(text: str) -> str:
     ).decode("latin-1")
 
 
+# ============================================================
+# PDF EXPORT
+# ============================================================
+
 def make_pdf(
     text: str,
     document_type: str = "Legal Document",
@@ -179,30 +260,55 @@ def make_pdf(
     brand_name: str = "LegalEase",
 ) -> bytes:
 
-    pdf = LegalPDF(
-        brand_name=brand_name,
-        document_type=document_type
+    # --------------------------------------------------------
+    # LOGO LOCATION
+    # --------------------------------------------------------
+
+    logo_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "assets",
+        "logo.png"
     )
 
+    logo_path = os.path.abspath(logo_path)
+
+    # --------------------------------------------------------
+    # CREATE PDF
+    # --------------------------------------------------------
+
+    pdf = LegalPDF(
+        brand_name=brand_name,
+        document_type=document_type,
+        logo_path=logo_path
+    )
+
+    # PDF metadata
     pdf.set_title(
         f"{document_type} - {brand_name}"
     )
 
-    pdf.set_author(brand_name)
+    pdf.set_author(
+        brand_name
+    )
 
+    # Add first page
     pdf.add_page()
 
+    # Normal text
     pdf.set_font(
         "Helvetica",
         "",
         10
     )
 
+    # Clean text
     cleaned = sanitize_text(text)
     cleaned = safe_pdf_text(cleaned)
 
     paragraphs = cleaned.split("\n\n")
 
+    # Write paragraphs
     for paragraph in paragraphs:
 
         paragraph = paragraph.strip()
@@ -218,4 +324,5 @@ def make_pdf(
 
         pdf.ln(3)
 
+    # Return PDF bytes
     return bytes(pdf.output())
