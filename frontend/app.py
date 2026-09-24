@@ -1,349 +1,279 @@
-import html
+import os
 import requests
 import streamlit as st
 
-BACKEND_URL = "http://127.0.0.1:8001"
 
+# =========================================================
+# PAGE CONFIGURATION
+# =========================================================
 
 st.set_page_config(
     page_title="LegalEase",
     page_icon="⚖️",
-    layout="wide",
+    layout="wide"
 )
 
 
-# ---------------------------------------------------------
+# =========================================================
+# BACKEND
+# =========================================================
+
+BACKEND_URL = "http://127.0.0.1:8000"
+
+
+# =========================================================
+# LOGO
+# =========================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+LOGO_PATH = os.path.abspath(
+    os.path.join(
+        BASE_DIR,
+        "..",
+        "backend",
+        "assets",
+        "logo.png"
+    )
+)
+
+
+# =========================================================
 # CSS
-# ---------------------------------------------------------
+# =========================================================
 
 st.markdown(
     """
     <style>
 
-    .stApp {
-        background: #f4f6f9;
-    }
-
-    .block-container {
-        max-width: 1250px;
-        padding-top: 25px;
-        padding-bottom: 40px;
-    }
-
-    .hero {
-        background: linear-gradient(135deg, #111827, #263449);
-        color: white;
-        padding: 35px;
-        border-radius: 20px;
+    .title {
         text-align: center;
+        font-size: 42px;
+        font-weight: bold;
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        text-align: center;
+        font-size: 18px;
         margin-bottom: 25px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.12);
     }
 
-    .hero-title {
-        font-size: 44px;
-        font-weight: 800;
-        margin-bottom: 8px;
-    }
-
-    .hero-subtitle {
-        font-size: 19px;
-        opacity: 0.9;
-    }
-
-    .hero-small {
-        margin-top: 12px;
-        font-size: 14px;
-        opacity: 0.7;
-    }
-
-    .card {
-        background: white;
-        padding: 22px;
-        border-radius: 15px;
-        border: 1px solid #e5e7eb;
-        margin-bottom: 20px;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.04);
-    }
-
-    .card-title {
-        font-size: 21px;
-        font-weight: 700;
-        color: #111827;
-        margin-bottom: 8px;
-    }
-
-    .card-text {
-        color: #6b7280;
-        line-height: 1.6;
-    }
-
-    .feature {
-        background: white;
-        padding: 20px;
-        border-radius: 14px;
-        border: 1px solid #e5e7eb;
-        text-align: center;
-        min-height: 120px;
-    }
-
-    .feature-icon {
-        font-size: 30px;
-        margin-bottom: 8px;
-    }
-
-    .feature-title {
-        font-weight: 700;
-        color: #111827;
-    }
-
-    .feature-text {
-        color: #6b7280;
-        font-size: 14px;
-        margin-top: 5px;
-    }
-
-    .preview-box {
-        background: white;
-        border: 1px solid #d1d5db;
-        border-radius: 14px;
-        padding: 25px;
-        line-height: 1.8;
-        min-height: 250px;
-        box-shadow: 0 3px 12px rgba(0,0,0,0.05);
-    }
-
-    .footer {
-        text-align: center;
-        color: #6b7280;
-        font-size: 13px;
-        padding-top: 25px;
+    .warning {
+        padding: 15px;
+        border-radius: 8px;
+        background-color: #fff3cd;
+        border: 1px solid #ffe69c;
+        margin-bottom: 25px;
     }
 
     </style>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 
-# ---------------------------------------------------------
-# Session state
-# ---------------------------------------------------------
+# =========================================================
+# LOGO
+# =========================================================
 
-if "document" not in st.session_state:
-    st.session_state["document"] = ""
+if os.path.exists(LOGO_PATH):
 
-if "document_type" not in st.session_state:
-    st.session_state["document_type"] = ""
+    col1, col2, col3 = st.columns([1, 2, 1])
 
-if "terms" not in st.session_state:
-    st.session_state["terms"] = ""
+    with col2:
+        st.image(
+            LOGO_PATH,
+            width=180
+        )
+
+else:
+
+    st.warning(
+        "Logo not found: " + LOGO_PATH
+    )
 
 
-# ---------------------------------------------------------
-# Hero
-# ---------------------------------------------------------
+# =========================================================
+# TITLE
+# =========================================================
+
+st.markdown(
+    '<div class="title">LegalEase</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
+    '<div class="subtitle">AI-Powered Legal Document Generator</div>',
+    unsafe_allow_html=True
+)
+
+
+# =========================================================
+# WARNING
+# =========================================================
 
 st.markdown(
     """
-    <div class="hero">
-        <div class="hero-title">⚖️ LegalEase</div>
-
-        <div class="hero-subtitle">
-            AI-Powered Legal Document Drafting Platform
-        </div>
-
-        <div class="hero-small">
-            Draft • Review • Edit • Export
-        </div>
+    <div class="warning">
+    ⚠️ <b>Important:</b> LegalEase creates AI-assisted drafts.
+    It does not provide legal advice. Review the document with
+    a qualified legal professional before using it.
     </div>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
 
-# ---------------------------------------------------------
-# Introduction
-# ---------------------------------------------------------
+# =========================================================
+# SIDEBAR
+# =========================================================
 
-st.markdown(
-    """
-    <div class="card">
-        <div class="card-title">
-            Welcome to LegalEase
-        </div>
+with st.sidebar:
 
-        <div class="card-text">
-            LegalEase helps users create AI-assisted first drafts
-            of common legal documents. Enter the document details,
-            generate a draft, review and edit it, then export it
-            as TXT, DOCX, or PDF.
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+    st.header("⚙️ Settings")
 
-
-# ---------------------------------------------------------
-# Features
-# ---------------------------------------------------------
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.markdown(
-        """
-        <div class="feature">
-            <div class="feature-icon">🤖</div>
-            <div class="feature-title">AI Drafting</div>
-            <div class="feature-text">
-                Generate legal document drafts
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    brand_name = st.text_input(
+        "Brand Name",
+        value="LegalEase"
     )
 
-with col2:
-    st.markdown(
-        """
-        <div class="feature">
-            <div class="feature-icon">✏️</div>
-            <div class="feature-title">Easy Editing</div>
-            <div class="feature-text">
-                Review and edit generated content
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.divider()
 
-with col3:
-    st.markdown(
-        """
-        <div class="feature">
-            <div class="feature-icon">📄</div>
-            <div class="feature-title">Multiple Formats</div>
-            <div class="feature-text">
-                Export TXT, DOCX and PDF
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.write("Backend URL")
 
-with col4:
-    st.markdown(
-        """
-        <div class="feature">
-            <div class="feature-icon">⚡</div>
-            <div class="feature-title">Simple Workflow</div>
-            <div class="feature-text">
-                Draft, review and export
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.code(BACKEND_URL)
 
-
-st.write("")
-
-
-# ---------------------------------------------------------
-# New Document button
-# ---------------------------------------------------------
-
-if st.session_state["document"]:
+    # -----------------------------------------------------
+    # TEST BACKEND
+    # -----------------------------------------------------
 
     if st.button(
-        "🆕 Create New Document",
-        use_container_width=True,
+        "🔎 Test Backend",
+        use_container_width=True
     ):
-        st.session_state["document"] = ""
-        st.session_state["document_type"] = ""
-        st.session_state["terms"] = ""
 
-        st.rerun()
+        try:
+
+            response = requests.get(
+                f"{BACKEND_URL}/health",
+                timeout=5
+            )
+
+            if response.status_code == 200:
+
+                st.success("Backend connected!")
+
+                st.json(
+                    response.json()
+                )
+
+            else:
+
+                st.error(
+                    f"Backend returned status "
+                    f"{response.status_code}"
+                )
+
+        except requests.exceptions.ConnectionError:
+
+            st.error(
+                "❌ Cannot connect to FastAPI."
+            )
+
+        except requests.exceptions.Timeout:
+
+            st.error(
+                "⏱️ Backend connection timed out."
+            )
+
+        except Exception as e:
+
+            st.error(
+                f"Error: {e}"
+            )
 
 
-# ---------------------------------------------------------
-# Document Information
-# ---------------------------------------------------------
+# =========================================================
+# DOCUMENT CREATION
+# =========================================================
 
-st.markdown(
-    """
-    <div class="card-title">
-        📋 Create Legal Document
-    </div>
-    """,
-    unsafe_allow_html=True,
+st.header("📄 Create Legal Document")
+
+
+# =========================================================
+# DOCUMENT TYPE
+# =========================================================
+
+document_type = st.selectbox(
+    "Document Type",
+    [
+        "Freelance Work Contract",
+        "Legal Agreement",
+        "Service Agreement",
+        "Rental Agreement",
+        "Employment Agreement",
+        "Non-Disclosure Agreement",
+        "Business Agreement",
+        "Custom Legal Document"
+    ]
 )
 
 
-col1, col2 = st.columns(2)
-
-
-with col1:
-
-    document_type = st.selectbox(
-        "Document Type",
-        [
-            "Freelance Work Contract",
-            "Employment Agreement",
-            "Non-Disclosure Agreement",
-            "Service Agreement",
-            "Rental Agreement",
-            "Partnership Agreement",
-            "Consulting Agreement",
-            "Loan Agreement",
-            "Business Contract",
-        ],
-    )
-
-
-with col2:
-
-    effective_date = st.text_input(
-        "Effective Date",
-        placeholder="Example: 24 September 2026",
-    )
-
+# =========================================================
+# PARTIES
+# =========================================================
 
 parties = st.text_area(
     "Parties Involved",
     placeholder=(
-        "Example: Jane Doe (Service Provider), "
-        "TechNova Inc. (Client)"
+        "Client: ABC Technologies Pvt. Ltd.\n"
+        "Freelancer: Arun Kumar"
     ),
-    height=100,
+    height=120
 )
 
+
+# =========================================================
+# TERMS
+# =========================================================
 
 terms = st.text_area(
-    "Terms & Conditions",
+    "Terms and Conditions",
     placeholder=(
-        "Example: Payment within 30 days; "
-        "Confidentiality must be maintained; "
-        "Either party may terminate with 15 days notice"
+        "The freelancer will provide website development services; "
+        "The total project fee is Rs. 25,000; "
+        "The client will pay 50% in advance and 50% after completion; "
+        "The freelancer will complete the work within 30 days; "
+        "Both parties agree to maintain confidentiality."
     ),
-    height=150,
+    height=180
 )
 
 
-# ---------------------------------------------------------
-# Generate
-# ---------------------------------------------------------
+# =========================================================
+# EFFECTIVE DATE
+# =========================================================
 
-generate_clicked = st.button(
-    "✨ Generate Legal Document",
+effective_date = st.text_input(
+    "Effective Date",
+    placeholder="1 October 2026"
+)
+
+
+# =========================================================
+# GENERATE DOCUMENT
+# =========================================================
+
+if st.button(
+    "✨ Generate Document",
     type="primary",
-    use_container_width=True,
-)
+    use_container_width=True
+):
 
-
-if generate_clicked:
+    # -----------------------------------------------------
+    # VALIDATION
+    # -----------------------------------------------------
 
     if not parties.strip():
 
@@ -365,295 +295,317 @@ if generate_clicked:
 
     else:
 
+        # -------------------------------------------------
+        # IMPORTANT:
+        # Backend expects "effective_date"
+        # -------------------------------------------------
+
         request_data = {
             "document_type": document_type,
             "parties": parties,
             "terms": terms,
-            "effective_date": effective_date,
+            "effective_date": effective_date
         }
 
-        try:
+        # -------------------------------------------------
+        # SEND TO FASTAPI
+        # -------------------------------------------------
 
-            with st.spinner(
-                "Generating your legal document..."
-            ):
+        with st.spinner(
+            "Generating legal document..."
+        ):
+
+            try:
 
                 response = requests.post(
                     f"{BACKEND_URL}/generate",
                     json=request_data,
-                    timeout=120,
+                    timeout=120
                 )
 
-            if response.status_code == 200:
+                # -----------------------------------------
+                # SUCCESS
+                # -----------------------------------------
 
-                data = response.json()
+                if response.status_code == 200:
 
-                st.session_state["document"] = data.get(
-                    "content",
-                    "",
-                )
+                    data = response.json()
 
-                st.session_state["document_type"] = (
-                    document_type
-                )
+                    st.session_state[
+                        "document_text"
+                    ] = data["content"]
 
-                st.session_state["terms"] = terms
+                    st.session_state[
+                        "document_type"
+                    ] = data["document_type"]
 
-                st.success(
-                    "✅ Legal document generated successfully!"
-                )
-
-            else:
-
-                try:
-                    error = response.json().get(
-                        "detail",
-                        response.text,
+                    st.success(
+                        "✅ Document generated successfully!"
                     )
 
-                except Exception:
-                    error = response.text
+                # -----------------------------------------
+                # BACKEND ERROR
+                # -----------------------------------------
+
+                else:
+
+                    try:
+
+                        error_data = response.json()
+
+                        error_message = error_data.get(
+                            "detail",
+                            response.text
+                        )
+
+                    except Exception:
+
+                        error_message = response.text
+
+                    st.error(
+                        "Generation failed:\n"
+                        + str(error_message)
+                    )
+
+            # ---------------------------------------------
+            # CONNECTION ERROR
+            # ---------------------------------------------
+
+            except requests.exceptions.ConnectionError:
 
                 st.error(
-                    f"Backend error ({response.status_code}): {error}"
+                    "❌ Cannot connect to LegalEase backend.\n\n"
+                    "Make sure FastAPI is running at:\n"
+                    "http://127.0.0.1:8000"
                 )
 
-        except requests.exceptions.ConnectionError:
+            # ---------------------------------------------
+            # TIMEOUT
+            # ---------------------------------------------
 
-            st.error(
-                "❌ Cannot connect to LegalEase backend. "
-                "Make sure FastAPI is running on "
-                "http://127.0.0.1:8000"
-            )
+            except requests.exceptions.Timeout:
 
-        except requests.exceptions.Timeout:
+                st.error(
+                    "⏱️ Backend request timed out."
+                )
 
-            st.error(
-                "⏳ The request took too long. Please try again."
-            )
+            # ---------------------------------------------
+            # OTHER ERROR
+            # ---------------------------------------------
 
-        except Exception as error:
+            except Exception as e:
 
-            st.error(
-                f"Unexpected error: {error}"
-            )
-
-
-# ---------------------------------------------------------
-# Generated document
-# ---------------------------------------------------------
-
-if st.session_state["document"]:
-
-    st.divider()
-
-    st.markdown(
-        """
-        <div class="card-title">
-            📝 Generated Legal Document
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    edited_document = st.text_area(
-        "Review and edit your document",
-        value=st.session_state["document"],
-        height=600,
-    )
-
-    st.session_state["document"] = edited_document
+                st.error(
+                    f"Unexpected error: {e}"
+                )
 
 
-    # -----------------------------------------------------
-    # Preview
-    # -----------------------------------------------------
+# =========================================================
+# DOCUMENT PREVIEW
+# =========================================================
 
-    st.markdown(
-        """
-        <div class="card-title">
-            👁️ Document Preview
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    safe_document = html.escape(
-        edited_document
-    ).replace(
-        "\n",
-        "<br>",
-    )
-
-    st.markdown(
-        f"""
-        <div class="preview-box">
-            {safe_document}
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-    # -----------------------------------------------------
-    # Downloads
-    # -----------------------------------------------------
+if "document_text" in st.session_state:
 
     st.divider()
 
-    st.markdown(
-        """
-        <div class="card-title">
-            ⬇️ Download Document
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.header("📝 Generated Document")
+
+    edited_text = st.text_area(
+        "Edit your document",
+        value=st.session_state["document_text"],
+        height=600
     )
 
+    st.session_state[
+        "document_text"
+    ] = edited_text
 
-    export_data = {
-        "text": edited_document,
-        "document_type": st.session_state.get(
-            "document_type",
-            document_type,
-        ),
-        "terms": st.session_state.get(
-            "terms",
-            terms,
-        ),
-        "brand_name": "LegalEase",
-    }
 
+    # =====================================================
+    # EXPORT SECTION
+    # =====================================================
+
+    st.divider()
+
+    st.header("📥 Export Document")
 
     col1, col2, col3 = st.columns(3)
 
 
+    # =====================================================
     # TXT
+    # =====================================================
+
     with col1:
 
-        try:
+        if st.button(
+            "📄 Export TXT",
+            use_container_width=True
+        ):
 
-            response = requests.post(
-                f"{BACKEND_URL}/export/txt",
-                json=export_data,
-                timeout=30,
-            )
+            try:
 
-            if response.status_code == 200:
+                export_data = {
+                    "text": edited_text,
+                    "document_type": document_type,
+                    "terms": terms,
+                    "brand_name": brand_name
+                }
 
-                st.download_button(
-                    "📄 Download TXT",
-                    response.content,
-                    "legalease_document.txt",
-                    "text/plain",
-                    use_container_width=True,
+                response = requests.post(
+                    f"{BACKEND_URL}/export/txt",
+                    json=export_data,
+                    timeout=30
                 )
 
-            else:
+                if response.status_code == 200:
+
+                    st.download_button(
+                        "⬇️ Download TXT",
+                        data=response.content,
+                        file_name="legalease_document.txt",
+                        mime="text/plain",
+                        use_container_width=True
+                    )
+
+                else:
+
+                    st.error(
+                        f"TXT export failed: "
+                        f"{response.text}"
+                    )
+
+            except Exception as e:
 
                 st.error(
-                    "TXT export failed."
+                    f"TXT export error: {e}"
                 )
 
-        except Exception as error:
 
-            st.error(
-                f"TXT export error: {error}"
-            )
-
-
+    # =====================================================
     # DOCX
+    # =====================================================
+
     with col2:
 
-        try:
+        if st.button(
+            "📘 Export DOCX",
+            use_container_width=True
+        ):
 
-            response = requests.post(
-                f"{BACKEND_URL}/export/docx",
-                json=export_data,
-                timeout=30,
-            )
+            try:
 
-            if response.status_code == 200:
+                export_data = {
+                    "text": edited_text,
+                    "document_type": document_type,
+                    "terms": terms,
+                    "brand_name": brand_name
+                }
 
-                st.download_button(
-                    "📝 Download DOCX",
-                    response.content,
-                    "legalease_document.docx",
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                    use_container_width=True,
+                response = requests.post(
+                    f"{BACKEND_URL}/export/docx",
+                    json=export_data,
+                    timeout=30
                 )
 
-            else:
+                if response.status_code == 200:
+
+                    st.download_button(
+                        "⬇️ Download DOCX",
+                        data=response.content,
+                        file_name="legalease_document.docx",
+                        mime=(
+                            "application/"
+                            "vnd.openxmlformats-officedocument."
+                            "wordprocessingml.document"
+                        ),
+                        use_container_width=True
+                    )
+
+                else:
+
+                    st.error(
+                        f"DOCX export failed: "
+                        f"{response.text}"
+                    )
+
+            except Exception as e:
 
                 st.error(
-                    "DOCX export failed."
+                    f"DOCX export error: {e}"
                 )
 
-        except Exception as error:
 
-            st.error(
-                f"DOCX export error: {error}"
-            )
-
-
+    # =====================================================
     # PDF
+    # =====================================================
+
     with col3:
 
-        try:
+        if st.button(
+            "📕 Export PDF",
+            use_container_width=True
+        ):
 
-            response = requests.post(
-                f"{BACKEND_URL}/export/pdf",
-                json=export_data,
-                timeout=30,
-            )
+            try:
 
-            if response.status_code == 200:
+                export_data = {
+                    "text": edited_text,
+                    "document_type": document_type,
+                    "terms": terms,
+                    "brand_name": brand_name
+                }
 
-                st.download_button(
-                    "📕 Download PDF",
-                    response.content,
-                    "legalease_document.pdf",
-                    "application/pdf",
-                    use_container_width=True,
+                response = requests.post(
+                    f"{BACKEND_URL}/export/pdf",
+                    json=export_data,
+                    timeout=30
                 )
 
-            else:
+                if response.status_code == 200:
+
+                    st.download_button(
+                        "⬇️ Download PDF",
+                        data=response.content,
+                        file_name="legalease_document.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+
+                else:
+
+                    try:
+
+                        error_data = response.json()
+
+                        error_message = error_data.get(
+                            "detail",
+                            response.text
+                        )
+
+                    except Exception:
+
+                        error_message = response.text
+
+                    st.error(
+                        "PDF export failed:\n"
+                        + str(error_message)
+                    )
+
+            except Exception as e:
 
                 st.error(
-                    "PDF export failed."
+                    f"PDF export error: {e}"
                 )
 
-        except Exception as error:
 
-            st.error(
-                f"PDF export error: {error}"
-            )
-
-
-# ---------------------------------------------------------
-# Disclaimer
-# ---------------------------------------------------------
+# =========================================================
+# FOOTER
+# =========================================================
 
 st.divider()
 
-st.warning(
-    "⚠️ LegalEase generates AI-assisted first drafts. "
-    "Documents should be reviewed by a qualified legal "
-    "professional before use."
-)
-
-
-# ---------------------------------------------------------
-# Footer
-# ---------------------------------------------------------
-
-st.markdown(
-    """
-    <div class="footer">
-        ⚖️ <b>LegalEase</b><br>
-        AI-Powered Legal Document Drafting Platform<br>
-        Final Year Project
-    </div>
-    """,
-    unsafe_allow_html=True,
+st.caption(
+    "LegalEase | AI-assisted legal document drafting | "
+    "Not legal advice"
 )

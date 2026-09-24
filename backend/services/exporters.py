@@ -1,5 +1,5 @@
-from io import BytesIO
 import os
+from io import BytesIO
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -9,202 +9,240 @@ from fpdf import FPDF
 from backend.utils.text import sanitize_text
 
 
-# ============================================================
-# TXT EXPORT
-# ============================================================
+# =========================================================
+# LOGO
+# =========================================================
+
+LOGO_PATH = os.path.abspath(
+    os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "assets",
+        "logo.png"
+    )
+)
+
+
+# =========================================================
+# TXT
+# =========================================================
 
 def make_txt(text: str) -> bytes:
     return sanitize_text(text).encode("utf-8")
 
 
-# ============================================================
-# DOCX EXPORT
-# ============================================================
+# =========================================================
+# DOCX
+# =========================================================
 
 def make_docx(
     text: str,
     document_type: str = "Legal Document",
     terms: str = "",
-    brand_name: str = "LegalEase",
+    brand_name: str = "LegalEase"
 ) -> bytes:
 
-    document = Document()
-    section = document.sections[0]
+    doc = Document()
+
+    section = doc.sections[0]
 
     section.top_margin = Inches(0.7)
     section.bottom_margin = Inches(0.7)
     section.left_margin = Inches(0.8)
     section.right_margin = Inches(0.8)
 
-    styles = document.styles
-    styles["Normal"].font.name = "Arial"
-    styles["Normal"].font.size = Pt(10.5)
-
     # Header
     header = section.header
-    p = header.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    r = p.add_run(brand_name)
-    r.bold = True
-    r.font.size = Pt(14)
+    header_paragraph = header.paragraphs[0]
+    header_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    if os.path.exists(LOGO_PATH):
+
+        run = header_paragraph.add_run()
+
+        run.add_picture(
+            LOGO_PATH,
+            width=Inches(1.5)
+        )
+
+    # Brand
+    brand_paragraph = doc.add_paragraph()
+    brand_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    run = brand_paragraph.add_run(brand_name)
+    run.bold = True
+    run.font.size = Pt(20)
 
     # Title
-    title = document.add_paragraph()
+    title = doc.add_paragraph()
     title.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    r = title.add_run(document_type.upper())
-    r.bold = True
-    r.font.size = Pt(16)
+    run = title.add_run(document_type.upper())
+    run.bold = True
+    run.font.size = Pt(16)
 
-    document.add_paragraph()
+    # Content
+    clean_text = sanitize_text(text)
 
-    cleaned = sanitize_text(text)
+    for line in clean_text.splitlines():
 
-    for block in cleaned.split("\n\n"):
+        line = line.strip()
 
-        block = block.strip()
-
-        if not block:
+        if not line:
+            doc.add_paragraph()
             continue
 
-        paragraph = document.add_paragraph()
+        paragraph = doc.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(8)
 
-        for index, line in enumerate(block.splitlines()):
+        run = paragraph.add_run(line)
+        run.font.size = Pt(11)
 
-            line = line.strip()
+    # Terms
+    if terms.strip():
 
-            if not line:
-                continue
+        terms_title = doc.add_paragraph()
 
-            if index > 0:
-                paragraph.add_run("\n")
+        run = terms_title.add_run("Terms")
+        run.bold = True
+        run.font.size = Pt(12)
 
-            r = paragraph.add_run(line)
+        for term in terms.split(";"):
 
-            if line.isupper():
-                r.bold = True
+            term = term.strip()
+
+            if term:
+
+                paragraph = doc.add_paragraph(
+                    style="List Bullet"
+                )
+
+                paragraph.add_run(term)
 
     # Footer
     footer = section.footer
-    p = footer.paragraphs[0]
-    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-    r = p.add_run(
-        f"{brand_name} | AI-assisted draft | Not legal advice"
+    footer_paragraph = footer.paragraphs[0]
+    footer_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+    footer_run = footer_paragraph.add_run(
+        f"{brand_name} | "
+        f"AI-assisted draft | "
+        f"Not legal advice"
     )
-    r.font.size = Pt(8)
+
+    footer_run.font.size = Pt(9)
 
     output = BytesIO()
-    document.save(output)
+
+    doc.save(output)
 
     return output.getvalue()
 
 
-# ============================================================
+# =========================================================
 # PDF CLASS
-# ============================================================
+# =========================================================
 
 class LegalPDF(FPDF):
 
     def __init__(
         self,
         brand_name="LegalEase",
-        document_type="Legal Document",
-        logo_path=None,
+        document_type="Legal Document"
     ):
-        super().__init__()
+
+        super().__init__(
+            orientation="P",
+            unit="mm",
+            format="A4"
+        )
 
         self.brand_name = brand_name
         self.document_type = document_type
-        self.logo_path = logo_path
 
-        # Margins
-        # Top margin is larger because logo is displayed there
         self.set_margins(
-            18,
-            32,
-            18
+            left=20,
+            top=42,
+            right=20
         )
 
-        # Space for footer
         self.set_auto_page_break(
             auto=True,
             margin=20
         )
 
-    # --------------------------------------------------------
-    # PDF HEADER
-    # --------------------------------------------------------
+    # -----------------------------------------------------
+    # HEADER
+    # -----------------------------------------------------
 
     def header(self):
 
-        # Display logo at top center
-        if self.logo_path and os.path.exists(self.logo_path):
+        if os.path.exists(LOGO_PATH):
 
-            logo_width = 35
+            try:
 
-            x_position = (
-                self.w - logo_width
-            ) / 2
+                logo_width = 35
 
-            self.image(
-                self.logo_path,
-                x=x_position,
-                y=8,
-                w=logo_width
-            )
+                x_position = (
+                    self.w - logo_width
+                ) / 2
 
-            # Move cursor below logo
-            self.set_y(28)
+                self.image(
+                    LOGO_PATH,
+                    x=x_position,
+                    y=8,
+                    w=logo_width
+                )
 
-        else:
+            except Exception:
+                pass
 
-            # If logo is not found
-            self.set_y(10)
+        self.set_y(30)
 
-        # Brand name
         self.set_font(
-            "Helvetica",
-            "B",
-            13
-        )
-
-        self.cell(
-            0,
-            8,
-            self.brand_name,
-            align="C"
-        )
-
-        self.ln(8)
-
-        # Document title
-        self.set_font(
-            "Helvetica",
+            "Arial",
             "B",
             14
         )
 
-        self.multi_cell(
+        self.cell(
             0,
-            8,
-            self.document_type.upper(),
+            7,
+            self.brand_name,
+            new_x="LMARGIN",
+            new_y="NEXT",
             align="C"
         )
 
-        self.ln(6)
+        self.set_font(
+            "Arial",
+            "B",
+            11
+        )
 
-    # --------------------------------------------------------
-    # PDF FOOTER
-    # --------------------------------------------------------
+        self.cell(
+            0,
+            6,
+            self.document_type,
+            new_x="LMARGIN",
+            new_y="NEXT",
+            align="C"
+        )
+
+        self.ln(5)
+
+    # -----------------------------------------------------
+    # FOOTER
+    # -----------------------------------------------------
 
     def footer(self):
 
         self.set_y(-15)
 
         self.set_font(
-            "Helvetica",
+            "Arial",
             "",
             8
         )
@@ -212,14 +250,19 @@ class LegalPDF(FPDF):
         self.cell(
             0,
             10,
-            f"{self.brand_name} | AI-assisted draft | Not legal advice",
+            (
+                f"{self.brand_name} | "
+                f"AI-assisted draft | "
+                f"Not legal advice | "
+                f"Page {self.page_no()}"
+            ),
             align="C"
         )
 
 
-# ============================================================
+# =========================================================
 # SAFE PDF TEXT
-# ============================================================
+# =========================================================
 
 def safe_pdf_text(text: str) -> str:
 
@@ -230,99 +273,178 @@ def safe_pdf_text(text: str) -> str:
         "\u201d": '"',
         "\u2013": "-",
         "\u2014": "-",
-        "\u2022": "-",
-        "\u00a0": " ",
         "\u2026": "...",
-        "\u00a9": "(c)",
-        "\u00ae": "(R)",
-        "\u2122": "(TM)",
+        "\u00a0": " ",
+        "\u2022": "-",
+        "\u00b7": "-",
+        "\t": " "
     }
-
-    text = str(text)
 
     for old, new in replacements.items():
         text = text.replace(old, new)
 
-    return text.encode(
-        "latin-1",
-        "replace"
-    ).decode("latin-1")
+    return (
+        text
+        .encode(
+            "latin-1",
+            "replace"
+        )
+        .decode("latin-1")
+    )
 
 
-# ============================================================
+# =========================================================
+# WRITE SAFE TEXT
+# =========================================================
+
+def write_pdf_text(
+    pdf,
+    text,
+    height=6,
+    bold=False
+):
+
+    text = safe_pdf_text(text)
+
+    if not text.strip():
+        pdf.ln(4)
+        return
+
+    if bold:
+
+        pdf.set_font(
+            "Arial",
+            "B",
+            11
+        )
+
+    else:
+
+        pdf.set_font(
+            "Arial",
+            "",
+            11
+        )
+
+    # IMPORTANT:
+    # wrapmode="CHAR" prevents the
+    # "Not enough horizontal space"
+    # error caused by long words/strings.
+
+    pdf.multi_cell(
+        w=pdf.epw,
+        h=height,
+        text=text,
+        border=0,
+        align="L",
+        fill=False,
+        new_x="LMARGIN",
+        new_y="NEXT",
+        wrapmode="CHAR"
+    )
+
+
+# =========================================================
 # PDF EXPORT
-# ============================================================
+# =========================================================
 
 def make_pdf(
     text: str,
     document_type: str = "Legal Document",
     terms: str = "",
-    brand_name: str = "LegalEase",
+    brand_name: str = "LegalEase"
 ) -> bytes:
-
-    # --------------------------------------------------------
-    # LOGO LOCATION
-    # --------------------------------------------------------
-
-    logo_path = os.path.join(
-        os.path.dirname(__file__),
-        "..",
-        "assets",
-        "logo.png"
-    )
-
-    logo_path = os.path.abspath(logo_path)
-
-    # --------------------------------------------------------
-    # CREATE PDF
-    # --------------------------------------------------------
 
     pdf = LegalPDF(
         brand_name=brand_name,
-        document_type=document_type,
-        logo_path=logo_path
+        document_type=document_type
     )
 
-    # PDF metadata
     pdf.set_title(
-        f"{document_type} - {brand_name}"
+        f"{brand_name} - {document_type}"
     )
 
     pdf.set_author(
         brand_name
     )
 
-    # Add first page
     pdf.add_page()
 
-    # Normal text
-    pdf.set_font(
-        "Helvetica",
-        "",
-        10
-    )
+    # -----------------------------------------------------
+    # MAIN DOCUMENT
+    # -----------------------------------------------------
 
-    # Clean text
-    cleaned = sanitize_text(text)
-    cleaned = safe_pdf_text(cleaned)
+    clean_text = sanitize_text(text)
 
-    paragraphs = cleaned.split("\n\n")
+    for line in clean_text.splitlines():
 
-    # Write paragraphs
-    for paragraph in paragraphs:
+        line = line.strip()
 
-        paragraph = paragraph.strip()
+        if not line:
 
-        if not paragraph:
+            pdf.ln(4)
+
             continue
 
-        pdf.multi_cell(
-            0,
-            6,
-            paragraph
+        is_heading = (
+            line.endswith(":")
+            or (
+                len(line) >= 2
+                and line[0].isdigit()
+                and line[1] == "."
+            )
         )
+
+        write_pdf_text(
+            pdf,
+            line,
+            height=7 if is_heading else 6,
+            bold=is_heading
+        )
+
+        pdf.ln(1)
+
+    # -----------------------------------------------------
+    # TERMS
+    # -----------------------------------------------------
+
+    if terms.strip():
 
         pdf.ln(3)
 
-    # Return PDF bytes
-    return bytes(pdf.output())
+        write_pdf_text(
+            pdf,
+            "Terms:",
+            height=7,
+            bold=True
+        )
+
+        for term in terms.split(";"):
+
+            term = term.strip()
+
+            if not term:
+                continue
+
+            write_pdf_text(
+                pdf,
+                "- " + term,
+                height=6,
+                bold=False
+            )
+
+            pdf.ln(1)
+
+    # -----------------------------------------------------
+    # OUTPUT
+    # -----------------------------------------------------
+
+    result = pdf.output()
+
+    if isinstance(result, bytearray):
+        result = bytes(result)
+
+    if isinstance(result, str):
+        result = result.encode("latin-1")
+
+    return result
